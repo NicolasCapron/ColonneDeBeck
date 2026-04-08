@@ -1,12 +1,12 @@
 const CACHE_NAME = 'beck-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/js/app.js',
-  '/js/store.js',
-  '/js/ui.js',
-  '/manifest.json'
+  './',
+  './index.html',
+  './css/style.css',
+  './js/app.js',
+  './js/store.js',
+  './js/ui.js',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (e) => {

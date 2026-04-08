@@ -4,7 +4,7 @@ import { navigate } from './ui.js';
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 
 // Boot
