@@ -84,6 +84,50 @@ function setHeader(title, showBack = false) {
   header.appendChild(el('h1', {}, [title]));
 }
 
+// ── Voice-only capture (returns a promise with the transcript) ──
+function voiceCapture() {
+  return new Promise((resolve, reject) => {
+    if (!recognition) initSpeech();
+    if (!recognition) {
+      reject(new Error('Reconnaissance vocale non disponible'));
+      return;
+    }
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    let finalTranscript = '';
+    let interimTranscript = '';
+
+    recognition.onresult = (e) => {
+      interimTranscript = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          finalTranscript += e.results[i][0].transcript + ' ';
+        } else {
+          interimTranscript += e.results[i][0].transcript;
+        }
+      }
+      // Update live preview
+      const preview = document.getElementById('voice-live-preview');
+      if (preview) {
+        preview.textContent = finalTranscript + interimTranscript || 'Ecoute en cours...';
+      }
+    };
+
+    recognition.onend = () => {
+      recognition.continuous = false;
+      resolve(finalTranscript.trim());
+    };
+
+    recognition.onerror = (e) => {
+      recognition.continuous = false;
+      if (e.error === 'no-speech') resolve(finalTranscript.trim());
+      else reject(e);
+    };
+
+    recognition.start();
+  });
+}
+
 // ── Navigation ──
 let currentView = 'home';
 
@@ -91,9 +135,12 @@ function navigate(view, data) {
   currentView = view;
   const app = document.getElementById('app');
   app.innerHTML = '';
+  // Remove any floating buttons
+  document.querySelectorAll('.fab, .fab-mic').forEach((f) => f.remove());
   switch (view) {
     case 'home': renderHome(app); break;
     case 'form': renderForm(app, data); break;
+    case 'voiceflow': renderVoiceFlow(app); break;
     case 'detail': renderDetail(app, data); break;
   }
 }
@@ -137,14 +184,11 @@ async function renderHome(app) {
     }
   }
 
+  // FABs
+  const fabMic = el('button', { className: 'fab fab-mic', onClick: () => navigate('voiceflow') }, ['\uD83C\uDF99\uFE0F']);
   const fab = el('button', { className: 'fab', onClick: () => navigate('form') }, ['+']);
+  document.body.appendChild(fabMic);
   document.body.appendChild(fab);
-
-  // Remove FAB when leaving home
-  const observer = new MutationObserver(() => {
-    if (currentView !== 'home' && fab.parentNode) fab.remove();
-  });
-  observer.observe(app, { childList: true });
 }
 
 // ── FORM (3 steps) ──
@@ -374,6 +418,100 @@ function renderForm(app, editId) {
     await Store.save(data);
     navigate('home');
   }
+}
+
+// ── VOICE FLOW (guided 3-step voice capture) ──
+function renderVoiceFlow(app) {
+  setHeader('Saisie vocale', true);
+
+  const STEPS = [
+    { key: 'situation', title: 'Situation', subtitle: 'Decrivez ce qui s\'est passe, ou, quand, avec qui...',  icon: '\uD83D\uDCCD' },
+    { key: 'emotions',  title: 'Emotions',  subtitle: 'Que ressentez-vous ? Nommez vos emotions et sensations...', icon: '\uD83D\uDCA7' },
+    { key: 'pensees',   title: 'Pensees',   subtitle: 'Que vous etes-vous dit ? Quelles pensees automatiques...', icon: '\uD83D\uDCAD' }
+  ];
+
+  let stepIndex = 0;
+  const transcripts = { situation: '', emotions: '', pensees: '' };
+
+  function render() {
+    app.innerHTML = '';
+    const step = STEPS[stepIndex];
+
+    // Steps indicator
+    const dots = el('div', { className: 'steps' }, STEPS.map((_, i) =>
+      el('div', { className: `step-dot ${i === stepIndex ? 'active' : i < stepIndex ? 'done' : ''}` })
+    ));
+    app.appendChild(dots);
+
+    const card = el('div', { className: 'card voice-flow-card' });
+
+    card.appendChild(el('div', { className: 'voice-flow-icon' }, [step.icon]));
+    card.appendChild(el('div', { className: 'step-title' }, [step.title]));
+    card.appendChild(el('div', { className: 'step-subtitle' }, [step.subtitle]));
+
+    // Live preview area
+    const preview = el('div', { className: 'voice-preview', id: 'voice-live-preview' },
+      [transcripts[step.key] || 'Appuyez sur le micro pour parler...']
+    );
+    card.appendChild(preview);
+
+    // Big mic button
+    let isRecording = false;
+    const micBtn = el('button', { className: 'voice-flow-mic' }, ['\uD83C\uDF99\uFE0F']);
+    micBtn.addEventListener('click', async () => {
+      if (isRecording) {
+        recognition.stop();
+        return;
+      }
+      isRecording = true;
+      micBtn.classList.add('recording');
+      preview.textContent = 'Ecoute en cours...';
+      try {
+        const text = await voiceCapture();
+        transcripts[step.key] = text;
+        preview.textContent = text || '(rien detecte, reessayez)';
+      } catch {
+        preview.textContent = '(erreur, reessayez)';
+      }
+      isRecording = false;
+      micBtn.classList.remove('recording');
+    });
+    card.appendChild(micBtn);
+    card.appendChild(el('div', { className: 'voice-flow-hint' }, ['Appuyez pour parler, appuyez pour arreter']));
+
+    app.appendChild(card);
+
+    // Navigation
+    const nav = el('div', { className: 'form-nav' });
+    if (stepIndex > 0) {
+      nav.appendChild(el('button', { className: 'btn btn-outline', onClick: () => { stepIndex--; render(); } }, ['Retour']));
+    }
+    if (stepIndex < STEPS.length - 1) {
+      nav.appendChild(el('button', { className: 'btn btn-primary', onClick: () => { stepIndex++; render(); } }, ['Suivant']));
+    } else {
+      nav.appendChild(el('button', { className: 'btn btn-accent', onClick: saveVoiceEntry }, ['Enregistrer']));
+    }
+    app.appendChild(nav);
+  }
+
+  async function saveVoiceEntry() {
+    const entry = {
+      date: new Date().toISOString().slice(0, 16),
+      lieu: '',
+      avecQui: '',
+      situation: transcripts.situation,
+      emotions: transcripts.emotions
+        ? transcripts.emotions.split(/[,.]/).map((s) => s.trim()).filter(Boolean).map((name) => ({ name, intensity: 5 }))
+        : [],
+      pensees: transcripts.pensees
+        ? transcripts.pensees.split(/[,.]/).map((s) => s.trim()).filter(Boolean)
+        : []
+    };
+    await Store.save(entry);
+    navigate('form', entry.id);
+  }
+
+  render();
 }
 
 // ── DETAIL VIEW ──
