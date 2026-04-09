@@ -2,6 +2,22 @@
 
 import Store from './store.js';
 
+// ── SVG Icons ──
+const MIC_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>';
+
+function micIcon(size) {
+  const span = document.createElement('span');
+  span.innerHTML = MIC_SVG;
+  span.style.display = 'inline-flex';
+  span.style.alignItems = 'center';
+  span.style.justifyContent = 'center';
+  if (size) {
+    span.querySelector('svg').setAttribute('width', size);
+    span.querySelector('svg').setAttribute('height', size);
+  }
+  return span;
+}
+
 // ── Speech Recognition ──
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
@@ -185,7 +201,7 @@ async function renderHome(app) {
   }
 
   // FABs
-  const fabMic = el('button', { className: 'fab fab-mic', onClick: () => navigate('voiceflow') }, ['\uD83C\uDF99\uFE0F']);
+  const fabMic = el('button', { className: 'fab fab-mic', onClick: () => navigate('voiceflow') }, [micIcon(28)]);
   const fab = el('button', { className: 'fab', onClick: () => navigate('form') }, ['+']);
   document.body.appendChild(fabMic);
   document.body.appendChild(fab);
@@ -257,7 +273,7 @@ function renderForm(app, editId) {
     const lieuWrap = el('div', { className: 'voice-input' });
     const lieuInput = el('input', { type: 'text', placeholder: 'Au bureau, dans la rue...', value: data.lieu });
     lieuInput.addEventListener('input', () => { data.lieu = lieuInput.value; });
-    const lieuMic = el('button', { className: 'btn-mic', type: 'button', onClick: () => startVoice(lieuInput, lieuMic) }, ['\uD83C\uDF99\uFE0F']);
+    const lieuMic = el('button', { className: 'btn-mic', type: 'button', onClick: () => startVoice(lieuInput, lieuMic) }, [micIcon()]);
     lieuWrap.appendChild(lieuInput);
     lieuWrap.appendChild(lieuMic);
     card.appendChild(lieuWrap);
@@ -273,7 +289,7 @@ function renderForm(app, editId) {
     const descWrap = el('div', { className: 'voice-input' });
     const descInput = el('textarea', { placeholder: 'Decrivez ce qui s\'est passe...', rows: '4' }, [data.situation]);
     descInput.addEventListener('input', () => { data.situation = descInput.value; });
-    const descMic = el('button', { className: 'btn-mic', type: 'button', onClick: () => startVoice(descInput, descMic) }, ['\uD83C\uDF99\uFE0F']);
+    const descMic = el('button', { className: 'btn-mic', type: 'button', onClick: () => startVoice(descInput, descMic) }, [micIcon()]);
     descWrap.appendChild(descInput);
     descWrap.appendChild(descMic);
     card.appendChild(descWrap);
@@ -380,7 +396,7 @@ function renderForm(app, editId) {
     card.appendChild(el('label', {}, ['Ajouter une pensee']));
     const wrap = el('div', { className: 'voice-input' });
     const input = el('textarea', { placeholder: '\"Je ne vais jamais y arriver...\"', rows: '2' });
-    const mic = el('button', { className: 'btn-mic', type: 'button', onClick: () => startVoice(input, mic) }, ['\uD83C\uDF99\uFE0F']);
+    const mic = el('button', { className: 'btn-mic', type: 'button', onClick: () => startVoice(input, mic) }, [micIcon()]);
     wrap.appendChild(input);
     wrap.appendChild(mic);
     card.appendChild(wrap);
@@ -457,7 +473,7 @@ function renderVoiceFlow(app) {
 
     // Big mic button
     let isRecording = false;
-    const micBtn = el('button', { className: 'voice-flow-mic' }, ['\uD83C\uDF99\uFE0F']);
+    const micBtn = el('button', { className: 'voice-flow-mic' }, [micIcon(36)]);
     micBtn.addEventListener('click', async () => {
       if (isRecording) {
         recognition.stop();

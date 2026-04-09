@@ -1,4 +1,4 @@
-const CACHE_NAME = 'beck-v1';
+const CACHE_NAME = 'beck-v2';
 const ASSETS = [
   './',
   './index.html',
